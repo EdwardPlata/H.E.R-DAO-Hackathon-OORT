@@ -1,34 +1,55 @@
-import tkinter as tk
-from tkinter import filedialog
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory
 from oortwrapper import OortWrapper
+from flask_dropzone import Dropzone
 
-def on_drop(event):
-    if event.data:
-        files = root.tk.splitlist(event.data)
-        for file in files:
-            # Upload the file to the Oort bucket
-            file_name = os.path.basename(file)
-            with open(file, 'rb') as f:
-                oort.put_object(bucket_name, file_name, f.read())
+app = Flask(__name__)
+app.config.update(
+    DROPZONE_ALLOWED_FILE_TYPE='default',
+    DROPZONE_MAX_FILE_SIZE=10,
+    DROPZONE_MAX_FILES=30,
+    DROPZONE_REDIRECT_VIEW='results',
+)
 
-# Initialize the OortWrapper
+dropzone = Dropzone(app)
 oort = OortWrapper()
 
-# Create a bucket or use an existing one
-bucket_name = 'my-bucket'
-if bucket_name not in oort.list_buckets():
-    oort.create_bucket(bucket_name)
+@app.route('/')
+def index():
+    buckets = oort.list_buckets()
+    return render_template('index.html', buckets=buckets)
 
-root = tk.Tk()
-root.title("Oort Drag & Drop")
+@app.route('/bucket/<bucket_name>')
+def view_bucket(bucket_name):
+    objects = oort.list_objects(bucket_name)
+    return render_template('bucket.html', bucket_name=bucket_name, objects=objects)
 
-frame = tk.Frame(root, width=400, height=200)
-frame.pack()
+@app.route('/create_bucket', methods=['POST'])
+def create_bucket():
+    bucket_name = request.form.get('bucket_name')
+    if bucket_name:
+        oort.create_bucket(bucket_name)
+    return redirect(url_for('index'))
 
-label = tk.Label(frame, text="Drag and drop files here")
-label.pack(pady=20)
+@app.route('/upload', methods=['POST'])
+def upload():
+    selected_bucket = request.form.get('bucket')
+    for key in request.files:
+        file = request.files.get(key)
+        if selected_bucket and file:
+            file_name = file.filename
+            file_data = file.read()
+            oort.put_object(selected_bucket, file_name, file_data)
+    return redirect(url_for('view_bucket', bucket_name=selected_bucket))
 
-frame.drop_target_register(tk.DND_FILES)
-frame.dnd_bind('<<Drop>>', on_drop)
+@app.route('/download/<bucket_name>/<path:file_name>')
+def download(bucket_name, file_name):
+    obj = oort.get_object(bucket_name, file_name)
+    return send_from_directory(obj['Body'], file_name, as_attachment=True)
 
-root.mainloop()
+@app.route('/delete_bucket/<bucket_name>')
+def delete_bucket(bucket_name):
+    oort.delete_bucket(bucket_name)
+    return redirect(url_for('index'))
+
+if __name__ == '__main__':
+    app.run(debug=True)

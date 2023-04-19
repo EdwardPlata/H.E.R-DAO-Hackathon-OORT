@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ bucket_name }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.2/basic.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dropzone/5.9.2/min/dropzone.min.js"></script>
+</head>
+<body>
+    <h1>{{ bucket_name }}</h1>
+    <h2>Files</h2>
+    <ul>
+        {% for obj in objects %}
+        <li>
+            <a href="{{ url_for('download', bucket_name=bucket_name, file_name=obj['Key']) }}">{{ obj['Key'] }}</a>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <h2>Upload files</h2>
+    <form action="{{ url_for('upload') }}" method="post" class="dropzone" id="my-dropzone">
+        <input type="hidden" name="bucket" value="{{ bucket_name }}">
+    </form>
+    <script>
+        Dropzone.options.myDropzone = {
+            paramName: "file",
+            maxFilesize: 10,  // MB
+            maxFiles: 30,
+            acceptedFiles: "image/*,application/pdf,.psd,.txt,.csv,.xlsx,.doc,.docx,.ppt,.pptx",
+            init: function () {
+                this.on("success", function (file) {
+                    location.reload();
+                });
+            },
+        };
+    </script>
+    <br>
+    <a href="{{ url_for('index') }}">Go back to the main page</a>
+</body>
+</html>
