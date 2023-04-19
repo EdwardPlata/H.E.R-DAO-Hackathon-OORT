@@ -10,12 +10,12 @@ OORT_ENDPOINT_URL=<your_endpoint_url>
 
 ```
 
-Replace *<your_access_key>*, *<your_secret_key>* , and *<your_endpoint_url>* with your actual Oort credentials.
+Replace **<your_access_key>**, **<your_secret_key>** , and **<your_endpoint_url>** with your actual Oort credentials.
 
 Once you have your credentials set up, you can start using the OortWrapper class to interact with your Oort buckets. Here's an example of how to use the OortWrapper class to upload a file to an Oort bucket:
 
 ```python
-from oort_wrapper import OortWrapper
+from oortwrapper import OortWrapper
 
 oort = OortWrapper()
 
