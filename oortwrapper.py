@@ -1,7 +1,10 @@
 import os
+import io
 import boto3
 from dotenv import load_dotenv
 import botocore
+import pandas as pd
+from pandasql import sqldf
 
 class OortWrapper:
     def __init__(self):
@@ -112,4 +115,51 @@ class OortWrapper:
             return self.s3_client.delete_object(Bucket=bucket_name, Key=key)
         except botocore.exceptions.ClientError as e:
             print(f"Error deleting object '{key}' from bucket '{bucket_name}': {e}")
+            raise e
+
+
+    def query_csv(self, bucket_name, csv_key):
+        """
+        Query a CSV file in the specified bucket and return the result as a Pandas DataFrame.
+
+        :param bucket_name: The name of the bucket containing the CSV file.
+        :param csv_key: The key (name) of the CSV file.
+        :return: A Pandas DataFrame containing the result of the query.
+        """
+        try:
+            response = self.s3_client.get_object(Bucket=bucket_name, Key=csv_key)
+            csv_content = response['Body'].read().decode('utf-8')
+            df = pd.read_csv(io.StringIO(csv_content))
+            return df
+        except botocore.exceptions.ClientError as e:
+            if e.response['Error']['Code'] == 'NoSuchBucket':
+                print(f"Bucket '{bucket_name}' does not exist.")
+            elif e.response['Error']['Code'] == 'NoSuchKey':
+                print(f"CSV file with key '{csv_key}' does not exist in bucket '{bucket_name}'.")
+            else:
+                print(f"Error querying CSV file '{csv_key}' from bucket '{bucket_name}': {e}")
+            raise e
+        
+    def query_csv_pandasql(self, bucket_name, csv_key, query):
+        """
+        Query a CSV file in the specified bucket using SQL and return the result as a Pandas DataFrame.
+
+        :param bucket_name: The name of the bucket containing the CSV file.
+        :param csv_key: The key (name) of the CSV file.
+        :param query: The SQL query to execute on the CSV file.
+        :return: A Pandas DataFrame containing the result of the query.
+        """
+        try:
+            response = self.s3_client.get_object(Bucket=bucket_name, Key=csv_key)
+            csv_content = response['Body'].read().decode('utf-8')
+            df = pd.read_csv(io.StringIO(csv_content))
+            result = sqldf(query, locals())
+            return result
+        except botocore.exceptions.ClientError as e:
+            if e.response['Error']['Code'] == 'NoSuchBucket':
+                print(f"Bucket '{bucket_name}' does not exist.")
+            elif e.response['Error']['Code'] == 'NoSuchKey':
+                print(f"CSV file with key '{csv_key}' does not exist in bucket '{bucket_name}'.")
+            else:
+                print(f"Error querying CSV file '{csv_key}' from bucket '{bucket_name}': {e}")
             raise e
